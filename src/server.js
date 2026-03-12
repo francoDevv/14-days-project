@@ -1,73 +1,99 @@
-const express = require("express");
-const app = express();
+import express from "express";
+import mongoose from "mongoose";
+import Product from "../models/Product.js"
 
+const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-let products = [
-    {id: 1, name: 'Peine', price: 10000, stock: 20},
-    {id: 2, name: 'Collar', price: 7500, stock: 50},
-    {id: 3, name: 'Anillo', price: 5000, stock: 30}
-];
+mongoose
+.connect("mongodb://127.0.0.1:27017/stock-api")
+.then(() => console.log("MongoDB conectado"))
+.catch(err => console.log(err));
 
-app.get("/", (req, res) => {
-    res.send("API funcionando, Te amo sofita, prueba");
+app.get("/products", async (req, res) => {
+  const products = await Product.find();
+  res.json(products);
 });
 
-app.get("/products", (req, res) => {
-    res.json(products);
-});
+app.get("/products/:id", async (req, res) => {
+  try {
 
-app.get("/products/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    const product = products.find((p) => p.id === id);
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "ID inválido"
+      });
+    }
+
+    const product = await Product.findById(id);
 
     if (!product) {
-        return res.status(404).json({message : "Producto no encontrado"});
+      return res.status(404).json({
+        message: "Producto no encontrado"
+      });
     }
 
     res.json(product);
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error del servidor"
+    });
+  }
 });
 
-app.post("/products", (req, res) => {
-    const newProduct = {
-        id: products.length + 1,
-        name: req.body.name,
-        price: req.body.price,
-        stock: req.body.stock
-    }
-
-    products.push(newProduct);
-    res.status(201).json(newProduct);
+app.post("/products", async (req, res) => {
+  const newProduct = new Product(req.body);
+  const savedProduct = await newProduct.save();
+  res.status(201).json(savedProduct);
 });
 
-app.put("/products/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    const product = products.find((p) => p.id === id);
+app.put("/products/:id", async (req, res) => {
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
 
-    if (!product) {
-        return res.status(404).json({message : "Producto no encontrado"});
+    if (!updatedProduct) {
+      return res.status(404).json({
+        message: "Producto no encontrado"
+      });
     }
 
-    product.name = req.body.name ?? product.name;
-    product.price = req.body.price ?? product.price;
-    product.stock = req.body.stock ?? product.stock;
+    res.json(updatedProduct);
 
-    res.json(product);
-})
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al actualizar producto"
+    });
+  }
+});
 
-app.delete("/products/:id", (req, res) => {
-    const id = parseInt(req.params.id);
-    const productExists = products.some((p) => p.id === id);
+app.delete("/products/:id", async (req, res) => {
+  try {
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
 
-    if (!productExists) {
-        return res.status(404).json({message : "Producto no encontrado"});
+    if (!deletedProduct) {
+      return res.status(404).json({
+        message: "Producto no encontrado"
+      });
     }
 
-    products = products.filter((p) => p.id !== id);
-    res.json({message : "Producto eliminado correctamente"}) 
-})
+    res.json({
+      message: "Producto eliminado correctamente"
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error al eliminar producto"
+    });
+  }
+});
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
