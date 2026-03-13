@@ -13,8 +13,14 @@ mongoose
 .catch(err => console.log(err));
 
 app.get("/products", async (req, res) => {
-  const products = await Product.find();
-  res.json(products);
+  try {
+    const products = await Product.find();
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error del servidor"
+    });
+  }
 });
 
 app.get("/products/:id", async (req, res) => {
@@ -46,37 +52,149 @@ app.get("/products/:id", async (req, res) => {
 });
 
 app.post("/products", async (req, res) => {
-  const newProduct = new Product(req.body);
-  const savedProduct = await newProduct.save();
-  res.status(201).json(savedProduct);
+  try {
+    const { name, price, stock } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({
+        message: "El nombre es obligatorio"
+      });
+    }
+
+    if (price === undefined) {
+      return res.status(400).json({
+        message: "El precio es obligatorio"
+      });
+    }
+
+    if (stock === undefined) {
+      return res.status(400).json({
+        message: "El stock es obligatorio"
+      });
+    }
+
+    if (price < 0) {
+      return res.status(400).json({
+        message: "El precio no puede ser negativo"
+      });
+    }
+
+    if (stock < 0) {
+      return res.status(400).json({
+        message: "El stock no puede ser negativo"
+      });
+    }
+
+    if (typeof price !== "number") {
+        return res.status(400).json({
+            message: "El precio debe ser un número"
+        });
+        }
+
+if (typeof stock !== "number") {
+        return res.status(400).json({
+            message: "El stock debe ser un número"
+        });
+        }
+
+    const newProduct = new Product({
+      name: name.trim(),
+      price,
+      stock,
+    });
+
+    const savedProduct = await newProduct.save();
+
+    res.status(201).json(savedProduct);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error del servidor"
+    });
+  }
 });
 
 app.put("/products/:id", async (req, res) => {
   try {
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const id = req.params.id;
 
-    if (!updatedProduct) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "ID inválido"
+      });
+    }
+
+    const product = await Product.findById(id);
+
+    if (!product) {
       return res.status(404).json({
         message: "Producto no encontrado"
       });
     }
 
-    res.json(updatedProduct);
+    const { name, price, stock } = req.body;
 
+    if (name !== undefined) {
+      if (name.trim() === "") {
+        return res.status(400).json({
+          message: "El nombre no puede estar vacío"
+        });
+      }
+      product.name = name.trim();
+    }
+
+    if (price !== undefined) {
+      if (typeof price !== "number") {
+        return res.status(400).json({
+          message: "El precio debe ser un número"
+        });
+      }
+
+      if (price < 0) {
+        return res.status(400).json({
+          message: "El precio no puede ser negativo"
+        });
+      }
+
+      product.price = price;
+    }
+
+    if (stock !== undefined) {
+      if (typeof stock !== "number") {
+        return res.status(400).json({
+          message: "El stock debe ser un número"
+        });
+      }
+
+      if (stock < 0) {
+        return res.status(400).json({
+          message: "El stock no puede ser negativo"
+        });
+      }
+
+      product.stock = stock;
+    }
+
+    const savedProduct = await product.save();
+
+    res.json(savedProduct);
   } catch (error) {
     res.status(500).json({
-      message: "Error al actualizar producto"
+      message: "Error del servidor"
     });
   }
 });
 
 app.delete("/products/:id", async (req, res) => {
   try {
-    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "ID inválido"
+      });
+    }
+
+    const deletedProduct = await Product.findByIdAndDelete(id);
 
     if (!deletedProduct) {
       return res.status(404).json({
@@ -87,10 +205,9 @@ app.delete("/products/:id", async (req, res) => {
     res.json({
       message: "Producto eliminado correctamente"
     });
-
   } catch (error) {
     res.status(500).json({
-      message: "Error al eliminar producto"
+      message: "Error del servidor"
     });
   }
 });
