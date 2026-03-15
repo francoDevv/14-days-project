@@ -45,7 +45,7 @@ export const validateCreateProduct = (req, res, next) => {
 };
 
 export const validateUpdateProduct = (req, res, next) => {
-    const {name, stock, price} = req.body;
+    const {name, stock, price, category} = req.body;
 
     if (name !== undefined) {
         if (typeof name !== "string" || name.trim() === "") {
@@ -71,6 +71,10 @@ export const validateUpdateProduct = (req, res, next) => {
         if (stock < 0) {
             return res.status(400).json({ message: "El stock no puede ser negativo"});
         }
+    }
+
+    if (category !== undefined && typeof category !== "string") {
+        return res.status(400).json({ message: "La categoría debe ser un texto"});
     }
 
     next();
