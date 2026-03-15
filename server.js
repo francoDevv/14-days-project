@@ -1,14 +1,17 @@
 import express from "express";
 import mongoose from "mongoose";
 import productRoutes from "./routes/productRoutes.js";
+import dotenv from "dotenv";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+dotenv.config();
 
 app.use(express.json());
 
 mongoose
-  .connect("mongodb://127.0.0.1:27017/stock-api")
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB conectado"))
   .catch((err) => console.log(err));
 
